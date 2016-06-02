@@ -162,29 +162,14 @@
         updateTimeDimension: true,
         duration: "P0D"
     });
-
-    var citiesLayer = L.geoJson(cities, {
-        pointToLayer: function(feature, latLng) {
-            var circleOptions = {
-                    fillColor: "rgb(255, 255, 255)",
-                    color: "rgb(255, 255, 255)",
-                    fillOpacity: 0.7,
-            };
-            var radius = ~~Math.max(250, 300*Math.log(feature.properties.population));
-            return L.circle(latLng, radius, circleOptions);
-        }
-    });
-
     
     map.addLayer(infectedCitiesLayer);
-    map.addLayer(citiesLayer);
 
 // =====================================================================
 // ======================  LAYER DISPLAY CONTROL  ======================
 
     var overlays = {
-        "infection": infectedCitiesLayer,
-        "cities": citiesLayer
+        "infection": infectedCitiesLayer
     };
     L.control.layers(null, overlays).addTo(map);
 
