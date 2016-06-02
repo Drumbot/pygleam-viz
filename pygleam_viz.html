@@ -1,0 +1,227 @@
+<html>
+<head>
+  <title>Influenza Epidemic Simulation in Rwanda</title>
+  <meta charset="utf-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+  <link rel="stylesheet" href="leaflet.timedimension.control.min.css" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="jquery-1.12.3.min.js"></script>
+  <script src="leaflet.timedimension.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script src="iso8601.min.js"></script>
+
+  <!-- =================================================================================== -->
+  <!-- =================================================================================== -->
+  <!-- Here you give the script the path to the gleam output file. Do enter the whole path, prefixed by file://.
+       My path here starts with a / itself (ie '/home/hugo/...'), so this is why there are three slashes. -->
+  <script src="file:///home/hugo/Projects/networks/network_theory_application_class_project/visualization/kigali_seed_5.jsonp"></script>
+  <!-- =================================================================================== -->
+  <!-- =================================================================================== -->
+  
+  <style>
+
+  /* css to customize Leaflet default styles  */
+/*  .leaflet-popup-content-wrapper{
+  background: rgba(87, 87, 87, 0.6);
+  box-shadow: 0 3px 3px rgba(0,0,0,0.4);
+  border-radius: 12px;
+  padding: 200px
+  }
+
+  .leaflet-popup-content-wrapper {
+    width:640px;
+    padding: 6px 0px;
+  }
+  .leaflet-popup-content p,
+  .leaflet-popup-content {
+    margin: 10px -20px;
+  }*/
+  
+  </style>
+</head>
+
+
+<body>
+  <div id="map" style="height: 100%"></div>
+  <script>
+
+// ===================================================================
+// =======================  MAP INITIAL SETUP  =======================
+
+    var map = L.map('map', {
+        zoom: 9,
+        center: [-1.943859, 30.059444]
+    })
+
+    var timeDimension = new L.TimeDimension({
+            timeInterval: "2016-05-20/2016-09-01",
+            period: "P1D",
+        });
+
+    // helper to share the timeDimension object between all layers
+    map.timeDimension = timeDimension; 
+    // otherwise you have to set the 'timeDimension' option on all layers.
+
+    var player = new L.TimeDimension.Player({
+        transitionTime: 100, 
+        loop: false,
+        startOver:true
+    }, timeDimension);
+
+    var timeDimensionControlOptions = {
+        player:        player,
+        timeDimension: timeDimension,
+        position:      'bottomleft',
+        autoPlay:      true,
+        minSpeed:      1,
+        speedStep:     0.5,
+        maxSpeed:      15,
+        timeSliderDragUpdate: true
+    }
+
+    var timeDimensionControl = new L.Control.TimeDimension(timeDimensionControlOptions);
+    map.addControl(timeDimensionControl);
+
+    var darkstyle = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoiaHVnb21haWxob3QiLCJhIjoiY2lvNmJsNmh0MDJienZna3E0ZGh5M3Z4dSJ9.qQyINpqKoWvLA8Kn0FwgoQ', {
+      maxZoom: 18,
+      attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+        '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+        'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+      id: 'mapbox.dark'
+    });
+    map.addLayer(darkstyle)
+    
+// ===================================================================
+// ======================  LOAD DATA FROM FILE  ======================
+
+    var cities = nodes;
+
+    var maxInfection = 0.1;
+    var maxInfR = 173;
+    var maxInfG = 21;
+    var maxInfB = 21;
+    var steps = 50;
+    var stepR = (255 - maxInfR);
+    var stepG = (255 - maxInfG);
+    var stepB = (255 - maxInfB);
+    function generate_node_color(properties) {
+        var compartments = properties.compartments
+        var infectedPerc = (compartments.infectious_t
+                             + compartments.infectious_nt
+                             + compartments.infectious_a) / properties.population;
+        var infectionStrength = infectedPerc / maxInfection;
+        var r = 255 - (stepR * infectionStrength);
+        var g = 255 - (stepG * infectionStrength);
+        var b = 255 - (stepB * infectionStrength);
+        return "rgb("+~~r+","+~~g+","+~~b+")";
+    }
+    var infected_cities_layer = L.geoJson(cities,{
+        pointToLayer: function(feature, latLng) {
+            var fillColor = generate_node_color(feature.properties);
+            var lineColor;
+            if (feature.properties.compartments.infectious_t
+                + feature.properties.compartments.infectious_nt
+                + feature.properties.compartments.infectious_a == 0) {
+              lineColor = "rgb(255, 255, 255)";
+            } else {
+              lineColor = "rgb(173, 21, 21)"
+            }
+            var circleOptions = {
+                    fillColor: fillColor,
+                    color: lineColor,
+                    opacity: lineColor == "rgb(255, 255, 255)" ? 0 : 0.7,
+                    fillOpacity: lineColor == "rgb(255, 255, 255)" ? 0 : 0.7
+            };
+            var radius = ~~Math.max(250, 300*Math.log(feature.properties.population));
+            return L.circle(latLng, radius, circleOptions)
+                .on("click", function () {
+                   infectious = feature.properties.compartments.infectious_t
+                                + feature.properties.compartments.infectious_nt
+                                + feature.properties.compartments.infectious_a
+                    var popupContent = "<dl>" 
+                                       + "<dt>susceptible</dt>" 
+                                       + "<dd>" + feature.properties.compartments.susceptible + "</dd>" 
+                                       + "<dt>latent</dt>" 
+                                       + "<dd>" + feature.properties.compartments.latent + "</dd>"
+                                       + "<dt>infectious</dt>" 
+                                       + "<dd>" + infectious + "</dd>"
+                                       + "<dt>recovered</dt>" 
+                                       + "<dd>" + feature.properties.compartments.recovered + "</dd>"
+                                       + "<dd>" + circleOptions.radius + "</dd>"
+                                       + "</dl>"
+                    this.bindPopup(popupContent);
+                    this.openPopup();
+                  });
+        }
+    });
+
+    var infectedCitiesLayer = L.timeDimension.layer.geoJson(infected_cities_layer, {
+        updateTimeDimension: true,
+        duration: "P0D"
+    });
+
+    var citiesLayer = L.geoJson(cities, {
+        pointToLayer: function(feature, latLng) {
+            var circleOptions = {
+                    fillColor: "rgb(255, 255, 255)",
+                    color: "rgb(255, 255, 255)",
+                    fillOpacity: 0.7,
+            };
+            var radius = ~~Math.max(250, 300*Math.log(feature.properties.population));
+            return L.circle(latLng, radius, circleOptions);
+        }
+    });
+
+    
+    map.addLayer(infectedCitiesLayer);
+    map.addLayer(citiesLayer);
+
+// =====================================================================
+// ======================  LAYER DISPLAY CONTROL  ======================
+
+    var overlays = {
+        "infection": infectedCitiesLayer,
+        "cities": citiesLayer
+    };
+    L.control.layers(null, overlays).addTo(map);
+
+    // TIME STUFF: http://socib.es/users/bfrontera/siglibre10/slides.html#/4/4
+    // for (var i = 0; i < cities.length; i++) {
+    //   latlng = cities[i].geometry.coordinates;
+    //   c = L.circle(latlng, 500, new_city_options)
+    //   c.on("click", function () {
+    //     var div = '<figure><embed type="image/svg+xml" src="svg_test.svg" width="600"/></figure>'
+    //     c.bindPopup(div);
+    //     c.openPopup();
+    //   });
+    //   cities_layer.addLayer(c)
+    // } 
+
+
+    // var cities = new L.FeatureGroup();
+
+
+// color gradient values: ['#ffffff', '#f7eaea', '#f0d4d4', '#e8bfbf', '#e1aaaa',
+//                         '#da9595', '#d28080', '#ca6a6a', '#c35555', '#bb4040',
+//                         '#b42b2b', '#ad1515', '#a50000']
+
+
+
+    // m.on("click", function () {
+        // var div = $('<div class="popupGraph" style="width: 200px; height: 200px;"><svg/></div>')[0];
+
+    //     m.setStyle({fillColor: '#56c2d6'})
+    // })
+    // n.on("click", function () {
+    //     // var div = $('<div class="popupGraph" style="width: 200px; height: 200px;"><svg/></div>')[0];
+    //     var div = '<figure><embed type="image/svg+xml" src="svg_test.svg" width="600"/></figure>'
+    //     n.bindPopup(div);
+    //     n.openPopup();
+    // })
+
+  </script>
+</body>
+</html>
