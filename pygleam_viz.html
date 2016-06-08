@@ -12,12 +12,14 @@
   <script src="leaflet.timedimension.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
   <script src="iso8601.min.js"></script>
+  <script src="file:///home/hugo/Projects/gleam/data/edges.jsonp"></script>
+  <script src="file:///home/hugo/Projects/gleam/data/base_nodes.jsonp"></script>
 
   <!-- =================================================================================== -->
   <!-- =================================================================================== -->
   <!-- Here you give the script the path to the gleam output file. Do enter the whole path, prefixed by file://.
        My path here starts with a / itself (ie '/home/hugo/...'), so this is why there are three slashes. -->
-  <script src="file:///home/hugo/Projects/networks/network_theory_application_class_project/visualization/kigali_seed_5.jsonp"></script>
+  <script src="file:///home/hugo/Projects/gleam/output/node-842_seed-5_n-20.jsonp"></script>
   <!-- =================================================================================== -->
   <!-- =================================================================================== -->
   
@@ -96,7 +98,71 @@
     
 // ===================================================================
 // ======================  LOAD DATA FROM FILE  ======================
+    var max_commuting_rate = 0.5;
+    function generate_edge_opacity(commuting_rate) {
+        // return 1;
+        return Math.min(commuting_rate*2, 0.25);
+    }
+    function defaultStyle(feature) {
+        return {
+            color: '#dada4d',
+            opacity: generate_edge_opacity(feature.properties.commuting_rate),
+            weight: 2
+        };
+    }
+    var highlightStyle = {
+          color: '#dada4d',
+          opacity: 1,
+          weight: 5
+        };
 
+    var onEachFeature = function(feature, layer) {
+        layer.setStyle(defaultStyle(feature));
+        (function(layer) {
+            // Create a mouseover event
+            layer.on("mouseover", function (e) {
+              layer.setStyle(highlightStyle);
+            });
+            // Create a mouseout event that undoes the mouseover changes
+            layer.on("mouseout", function (e) {
+              layer.setStyle(defaultStyle(feature)); 
+            });
+            // Close the "anonymous" wrapper function, and call it while passing
+            // in the variables necessary to make the events work the way we want.
+        })(layer);
+    };
+
+    var edge_layer = L.geoJson(edges, {
+      onEachFeature: onEachFeature
+    });
+
+    map.addLayer(edge_layer);
+
+
+    var base_nodes_layer = L.geoJson(base_nodes,{
+        pointToLayer: function(feature, latLng) {
+            var circleOptions = {
+                        fillColor: '#e6e6e6',
+                        color: '#e6e6e6',
+                        opacity: 0,
+                        fillOpacity: 0.5
+                };
+            var radius = ~~Math.max(250, 300*Math.log(feature.properties.population));
+            return L.circle(latLng, 500, circleOptions)
+                    .on("click", function () {
+                      var popupContent = "<dl>"
+                                           + "<dt>" + feature.properties.name + "</dt>" 
+                                           + "<dd>pop: " + ~~feature.properties.population + "</dd>"
+                                           + "</dl>"
+                        this.bindPopup(popupContent);
+                        this.openPopup();
+                    });
+        }
+    });
+
+    map.addLayer(base_nodes_layer);
+
+    // From the gleam output file
     var cities = nodes;
 
     var maxInfection = 0.1;
@@ -118,6 +184,7 @@
         var b = 255 - (stepB * infectionStrength);
         return "rgb("+~~r+","+~~g+","+~~b+")";
     }
+
     var infected_cities_layer = L.geoJson(cities,{
         pointToLayer: function(feature, latLng) {
             var fillColor = generate_node_color(feature.properties);
@@ -135,13 +202,15 @@
                     opacity: lineColor == "rgb(255, 255, 255)" ? 0 : 0.7,
                     fillOpacity: lineColor == "rgb(255, 255, 255)" ? 0 : 0.7
             };
-            var radius = ~~Math.max(250, 300*Math.log(feature.properties.population));
+            var radius = ~~Math.max(150, 150*Math.log(feature.properties.population));
             return L.circle(latLng, radius, circleOptions)
                 .on("click", function () {
                    infectious = feature.properties.compartments.infectious_t
                                 + feature.properties.compartments.infectious_nt
                                 + feature.properties.compartments.infectious_a
-                    var popupContent = "<dl>" 
+                    var popupContent = "<dl>"
+                                       + "<dt>" + feature.properties.name + "</dt>" 
+                                       + "<dd>----------------</dd>"
                                        + "<dt>susceptible</dt>" 
                                        + "<dd>" + feature.properties.compartments.susceptible + "</dd>" 
                                        + "<dt>latent</dt>" 
@@ -150,7 +219,6 @@
                                        + "<dd>" + infectious + "</dd>"
                                        + "<dt>recovered</dt>" 
                                        + "<dd>" + feature.properties.compartments.recovered + "</dd>"
-                                       + "<dd>" + circleOptions.radius + "</dd>"
                                        + "</dl>"
                     this.bindPopup(popupContent);
                     this.openPopup();
@@ -169,43 +237,11 @@
 // ======================  LAYER DISPLAY CONTROL  ======================
 
     var overlays = {
-        "infection": infectedCitiesLayer
+        "infection": infectedCitiesLayer,
+        "edges": edge_layer,
+        "base_nodes": base_nodes_layer
     };
     L.control.layers(null, overlays).addTo(map);
-
-    // TIME STUFF: http://socib.es/users/bfrontera/siglibre10/slides.html#/4/4
-    // for (var i = 0; i < cities.length; i++) {
-    //   latlng = cities[i].geometry.coordinates;
-    //   c = L.circle(latlng, 500, new_city_options)
-    //   c.on("click", function () {
-    //     var div = '<figure><embed type="image/svg+xml" src="svg_test.svg" width="600"/></figure>'
-    //     c.bindPopup(div);
-    //     c.openPopup();
-    //   });
-    //   cities_layer.addLayer(c)
-    // } 
-
-
-    // var cities = new L.FeatureGroup();
-
-
-// color gradient values: ['#ffffff', '#f7eaea', '#f0d4d4', '#e8bfbf', '#e1aaaa',
-//                         '#da9595', '#d28080', '#ca6a6a', '#c35555', '#bb4040',
-//                         '#b42b2b', '#ad1515', '#a50000']
-
-
-
-    // m.on("click", function () {
-        // var div = $('<div class="popupGraph" style="width: 200px; height: 200px;"><svg/></div>')[0];
-
-    //     m.setStyle({fillColor: '#56c2d6'})
-    // })
-    // n.on("click", function () {
-    //     // var div = $('<div class="popupGraph" style="width: 200px; height: 200px;"><svg/></div>')[0];
-    //     var div = '<figure><embed type="image/svg+xml" src="svg_test.svg" width="600"/></figure>'
-    //     n.bindPopup(div);
-    //     n.openPopup();
-    // })
 
   </script>
 </body>
