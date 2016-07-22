@@ -7,13 +7,13 @@
   <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
   <link rel="stylesheet" href="leaflet.timedimension.control.min.css" />
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-  <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="https://npmcdn.com/leaflet@1.0.0-rc.2/dist/leaflet.js"></script>
   <script src="jquery-1.12.3.min.js"></script>
   <script src="leaflet.timedimension.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
   <script src="iso8601.min.js"></script>
-  <script src="file:///home/hugo/Projects/gleam/data/edges.jsonp"></script>
-  <script src="file:///home/hugo/Projects/gleam/data/base_nodes.jsonp"></script>
+  <script src="file:///home/hugo/Projects/pygleam-viz/edges.jsonp"></script>
+  <script src="file:///home/hugo/Projects/pygleam-viz/base_nodes.jsonp"></script>
 
   <!-- =================================================================================== -->
   <!-- =================================================================================== -->
@@ -163,7 +163,7 @@
     map.addLayer(base_nodes_layer);
 
     // From the gleam output file
-    var cities = nodes;
+    // var cities = nodes;
 
     var maxInfection = 0.1;
     var maxInfR = 173;
@@ -234,12 +234,29 @@
     map.addLayer(infectedCitiesLayer);
 
 // =====================================================================
+// ===================  SURVEILLANCE STATION MARKERS  ==================
+
+    var Kigali = L.marker([-1.940278, 29.873888]),
+        Rubavu = L.marker([-1.6892916, 29.2930875]),
+        Gitarama = L.marker([-2.0804472, 29.7599761]),
+        Ruhengeri = L.marker([-1.5034616, 29.6325305]),
+        Cyangugu = L.marker([-2.4756775, 28.917927]),
+        Butare = L.marker([-2.6077503, 29.7368128]),
+        Kibungo = L.marker([-2.1900077, 30.4357631]);
+// 
+    var surveillance_markers_layer = L.layerGroup([Kigali, Rubavu, Gitarama, Ruhengeri,
+                                                   Cyangugu, Butare, Kibungo]);
+    map.addLayer(surveillance_markers_layer);
+
+
+// =====================================================================
 // ======================  LAYER DISPLAY CONTROL  ======================
 
     var overlays = {
         "infection": infectedCitiesLayer,
         "edges": edge_layer,
-        "base_nodes": base_nodes_layer
+        "base_nodes": base_nodes_layer,
+        "surveillance stations": surveillance_markers_layer
     };
     L.control.layers(null, overlays).addTo(map);
 
